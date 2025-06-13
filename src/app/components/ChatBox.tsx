@@ -18,26 +18,9 @@ export default function ChatBox({ socket, roomId, initialHistory, typingUsers }:
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMessages(initialHistory); }, [initialHistory]);
 
-  // Effect to close emoji picker when clicking outside of it
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // Check if the click is outside the emoji picker container
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
-        // Also check if the click was not on the emoji toggle button itself
-        const emojiButton = document.getElementById('emoji-toggle-button');
-        if (emojiButton && !emojiButton.contains(event.target as Node)) {
-          setShowEmojiPicker(false);
-        }
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => { document.removeEventListener("mousedown", handleClickOutside); };
-  }, [emojiPickerRef]);
-  
   useEffect(() => {
     if (!socket) return;
     const handleNewMessage = (message: ChatMessage) => {
@@ -99,28 +82,25 @@ export default function ChatBox({ socket, roomId, initialHistory, typingUsers }:
     }
   };
   
-  const renderMessage = (messageString: string) => {
+  const renderMessage = (msg: ChatMessage) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const isApiUrl = messageString.includes(process.env.NEXT_PUBLIC_API_URL!);
+    const isFileUrl = msg.message.includes(process.env.NEXT_PUBLIC_API_URL!);
     
-    if (isApiUrl && (messageString.match(/\.(jpeg|jpg|gif|png)$/i) != null)) {
-      return `<img src="${messageString}" alt="Shared content" style="max-width: 100%; border-radius: 4px;" />`;
+    if (isFileUrl && (msg.message.endsWith('.png') || msg.message.endsWith('.jpg') || msg.message.endsWith('.jpeg') || msg.message.endsWith('.gif'))) {
+      return <img src={msg.message} alt="Shared" style={{ maxWidth: '100%', borderRadius: '4px' }} />;
     }
-    if (isApiUrl) {
-      const fileName = decodeURIComponent(messageString.split('-').pop() || '');
-      return `<a href="${messageString}" target="_blank" rel="noopener noreferrer" style="color: #0056b3;">View File: ${fileName}</a>`;
-    }
-    return messageString.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
+    
+    return msg.message.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
   };
 
   return (
-    <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', border: '1px solid #ccc', borderRadius: '8px', overflow: 'hidden', minHeight: '300px', position: 'relative' }}>
+    <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', border: '1px solid #ccc', borderRadius: '8px', overflow: 'hidden', minHeight: '300px' }}>
       <h3 style={{ margin: 0, padding: '0.8rem', background: '#f4f4f4', borderBottom: '1px solid #ccc', textAlign: 'center' }}>Live Chat</h3>
       <div style={{ flexGrow: 1, padding: '0.5rem', overflowY: 'auto' }}>
         {messages.map((msg, index) => (
           <div key={index} style={{ marginBottom: '0.5rem', wordBreak: 'break-word' }}>
             <strong style={{ color: '#007bff' }}>{msg.author}:</strong>{' '}
-            <span dangerouslySetInnerHTML={{ __html: renderMessage(msg.message) }} />
+            <span dangerouslySetInnerHTML={{ __html: renderMessage(msg) }} />
           </div>
         ))}
         <div style={{ height: '20px', color: '#888', fontStyle: 'italic' }}>
@@ -130,21 +110,20 @@ export default function ChatBox({ socket, roomId, initialHistory, typingUsers }:
         </div>
         <div ref={chatBottomRef} />
       </div>
-      {showEmojiPicker && (
-        <div ref={emojiPickerRef} style={{ position: 'absolute', bottom: '50px', right: '10px', zIndex: 10 }}>
-          <EmojiPicker onEmojiClick={handleEmojiClick} />
-        </div>
-      )}
+      {showEmojiPicker && <EmojiPicker onEmojiClick={handleEmojiClick} style={{ width: '100%' }} />}
       <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '0.5rem', borderTop: '1px solid #ccc', background: '#f4f4f4', alignItems: 'center' }}>
         <input
           type="text"
           value={newMessage}
-          onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
+          onChange={(e) => {
+            setNewMessage(e.target.value);
+            handleTyping();
+          }}
           placeholder="Type a message..."
           style={{ flexGrow: 1, border: '1px solid #ccc', padding: '0.4rem', borderRadius: '4px' }}
         />
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} accept="image/*,application/pdf" />
-        <button id="emoji-toggle-button" type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ marginLeft: '0.5rem' }}>😀</button>
+        <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ marginLeft: '0.5rem' }}>😀</button>
         <button type="button" onClick={() => fileInputRef.current?.click()} style={{ marginLeft: '0.5rem' }}>📎</button>
         <button type="submit" style={{ marginLeft: '0.5rem' }}>Send</button>
       </form>

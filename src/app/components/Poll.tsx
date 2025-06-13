@@ -2,25 +2,22 @@
 import { useState } from 'react';
 import { Socket } from 'socket.io-client';
 
-interface PollOption { text: string; votes: number; voters: string[]; }
+interface PollOption { text: string; votes: number; }
 interface Poll { question: string; options: PollOption[]; }
 
 interface PollProps {
   socket: Socket | null;
   roomId: string;
   activePoll: Poll | null;
-  userName: string; // NEW: Pass the current user's name
 }
 
-export default function Poll({ socket, roomId, activePoll, userName }: PollProps) {
+export default function Poll({ socket, roomId, activePoll }: PollProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']); // Start with two empty options
 
   const handleAddOption = () => {
-    if (options.length < 5) { // Limit to 5 options for sanity
-      setOptions([...options, '']);
-    }
+    setOptions([...options, '']);
   };
 
   const handleOptionChange = (index: number, value: string) => {
@@ -77,23 +74,14 @@ export default function Poll({ socket, roomId, activePoll, userName }: PollProps
 
   const renderActivePoll = () => {
     const totalVotes = activePoll!.options.reduce((sum, opt) => sum + opt.votes, 0) || 1;
-    // Check if the current user has already voted
-    const userHasVoted = activePoll!.options.some(opt => opt.voters.includes(userName));
-
     return (
       <div>
         <h4>{activePoll!.question}</h4>
         {activePoll!.options.map((option, index) => (
           <div key={index} style={{ marginBottom: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>{option.text}</span>
-              <button
-                onClick={() => handleVote(index)}
-                disabled={userHasVoted}
-                style={{ fontSize: '0.8rem', cursor: userHasVoted ? 'not-allowed' : 'pointer' }}
-              >
-                Vote ({option.votes})
-              </button>
+              <button onClick={() => handleVote(index)} style={{ fontSize: '0.8rem' }}>Vote ({option.votes})</button>
             </div>
             <div style={{ background: '#e9ecef', borderRadius: '4px', height: '20px', overflow: 'hidden' }}>
               <div
@@ -107,7 +95,6 @@ export default function Poll({ socket, roomId, activePoll, userName }: PollProps
             </div>
           </div>
         ))}
-        {userHasVoted && <p style={{ textAlign: 'center', fontStyle: 'italic', color: '#666', marginTop: '1rem' }}>You have voted.</p>}
       </div>
     );
   };
